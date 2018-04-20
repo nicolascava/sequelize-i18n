@@ -38,9 +38,9 @@ Just set the Sequelize i18n module before importing models:
 import Sequelize from 'sequelize';
 import SequelizeI18N from 'sequelize-i18n';
 
-const languages = { 
-	list: ['EN', 'FR', 'ES'], 
-	default: 'FR', 
+const languages = {
+  list: ['EN', 'FR', 'ES'],
+  default: 'FR',
 };
 const sequelize = new Sequelize('db_name', 'user', 'password');
 const i18n = new SequelizeI18N(sequelize, {
@@ -67,8 +67,6 @@ const ProductModel = sequelize.import('product', product)
 Sequelize i18n will check for i18n property in your model.
 If i18n is enabled, it will create a new table in which property's internationalized values will be stored.
 
-Example:
-
 Starting from the above example `Product`.
 
 ```javascript
@@ -80,7 +78,7 @@ Starting from the above example `Product`.
 }
 ```
 
-A `Product_i18n` model will be created, with the following columns:
+A `product_i18n` model will be created, with the following columns:
 
 * `id`: the unique row identifier (`INTEGER`).
 * `language_id`: identifies the current translation language (`INTEGER` or `STRING`).
