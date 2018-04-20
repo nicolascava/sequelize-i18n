@@ -55,12 +55,12 @@ const ProductModel = sequelize.import('product', product)
 
 ### Options
 
-* `languages` (`Array`): list of allowed languages IDs.
-* `defaultLanguage` (`Object`): default language ID.
-* `i18nDefaultScope` (`Boolean = true`): add i18n to the default model scope.
-* `addI18NScope` (`Boolean` default to `true`): add i18n scope to model.
-* `injectI18NScope` (`Boolean` default to `true`): inject i18n to model scopes.
-* `defaultLanguageFallback` (`Boolean` default to `true`): fallback to default language if we can't find a value for the given language.
+* `languages`: list of allowed languages IDs.
+* `defaultLanguage`: default language ID.
+* `i18nDefaultScope`: add i18n to the default model scope.
+* `addI18NScope`: add i18n scope to model.
+* `injectI18NScope`: inject i18n to model scopes.
+* `defaultLanguageFallback`: fallback to default language if we can't find a value for the given language.
 
 ## How it works
 
