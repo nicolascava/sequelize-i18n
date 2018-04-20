@@ -420,6 +420,8 @@ export default class SequelizeI18N {
         mutableOptions.defaultLanguageFallback : this.defaultLanguageFallback;
 
       if (this.defaultLanguage === null || !mutableOptions.defaultLanguageFallback) exit = true;
+
+      // TODO: model name is not defined as this in the instance which can break the whole library.
       if (!(this[modelName] && this[modelName].length) || exit) return this;
 
       for (let index = 0; index < this[modelName].length; index += 1) {
