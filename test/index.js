@@ -1,207 +1,155 @@
-'use strict';
+import Sequelize from 'sequelize';
+import chai from 'chai';
 
-const should = require('chai').should();
-const Sequelize = require('sequelize');
-const utils = require('../lib/utils');
-require('mocha');
+import SequelizeI18N from '../';
+import Model from './Model';
+
+chai.should();
 
 const languages = {
-    list: ["FR", "EN", "ES"],
-    default: "FR"
+  list: ['FR', 'EN', 'ES'],
+  default: 'FR',
 };
 
-let sequelize;
-let Model;
-let i18n;
-let instance;
+let sequelize = null;
+let i18n = null;
+let instance = null;
+let TestModel = null;
 
-describe('Utils methods', function () {
-
-    it('should return the i18n model name', function () {
-        utils.getI18nName('test').should.equal('test_i18n');
+describe('SequelizeI18N', () => {
+  beforeEach(async () => {
+    sequelize = new Sequelize('', '', '', {
+      dialect: 'sqlite',
+      logging: false,
     });
 
-    it('toArray() of null should return an empty array', function () {
-        const result = utils.toArray(null);
-        Array.isArray(result).should.equal(true);
-        result.length.should.equal(0);
+    await sequelize.authenticate();
+
+    i18n = new SequelizeI18N(sequelize, {
+      languages: languages.list,
+      defaultLanguage: languages.default,
     });
 
-    it('toArray() of an empty array should return an empty array', function () {
-        const result = utils.toArray([]);
-        Array.isArray(result).should.equal(true);
-        result.length.should.equal(0);
+    i18n.init();
+
+    TestModel = Model(sequelize);
+
+    await sequelize.sync({ force: true });
+
+    instance = await TestModel.create({
+      id: 1,
+      label: 'test',
+      reference: 'xxx',
     });
+  });
 
-    it('toArray() of an object should return an array containing the object at index 0', function () {
-        const obj = 5;
-        var result = utils.toArray(obj);
-        Array.isArray(result).should.equal(true);
-        result.length.should.equal(1);
-        result[0].should.equal(obj);
-    });
+  it('`getI18NName()` should return the i18n model name', () =>
+    SequelizeI18N.getI18NName('test').should.equal('test_i18n'));
 
-    it('getLanguageArrayType() of an array of strings should return "STRING" ', function () {
-        const result = utils.getLanguageArrayType(['FR', 'EN']);
-        result.should.equal("STRING");
-    });
+  it('`toArray()` of `null` should return an empty array', () => {
+    const result = SequelizeI18N.toArray(null);
 
-    it('getLanguageArrayType() of an array of numbers should return "INTEGER" ', function () {
-        const result = utils.getLanguageArrayType([1, 2]);
-        result.should.equal("INTEGER");
-    });
+    Array.isArray(result).should.equal(true);
+    result.length.should.equal(0);
+  });
 
-    it('getLanguageArrayType() of an array of mixed object should return "STRING" ', function () {
-        const result = utils.getLanguageArrayType(["1", 2]);
-        result.should.equal("STRING");
-    });
-});
+  it('`toArray()` of an empty array should return an empty array', () => {
+    const result = SequelizeI18N.toArray([]);
 
-describe('Sequelize', function () {
+    Array.isArray(result).should.equal(true);
+    result.length.should.equal(0);
+  });
 
-    it('should be connected to database', function () {
+  it('`toArray()` of an object should return an array that contains the object at index 0', () => {
+    const obj = 5;
+    const result = SequelizeI18N.toArray(obj);
 
-        sequelize = new Sequelize('', '', '', {
-            dialect: 'sqlite',
-            //storage: 'database.test.sqlite',
-            logging: false
-        });
+    Array.isArray(result).should.equal(true);
+    result.length.should.equal(1);
+    result[0].should.equal(obj);
+  });
 
-        sequelize
-            .authenticate()
-            .then(function (err) {
-                console.log('Connection has been established successfully.');
-            })
-            .catch(function (err) {
-                console.log('Unable to connect to the database:', err);
-            });
+  it('`getLanguageArrayType()` of an array of strings should return `STRING`', () => {
+    const result = SequelizeI18N.getLanguageArrayType(['FR', 'EN']);
 
-    });
+    result.should.equal('STRING');
+  });
 
-    it('should init i18n module', function () {
-        var Sequelize_i18n = require('../index.js');
-        i18n = new Sequelize_i18n(sequelize, {languages: languages.list, default_language: languages.default});
-        i18n.init();
-    });
+  it('`getLanguageArrayType()` of an array of numbers should return `INTEGER`', () => {
+    const result = SequelizeI18N.getLanguageArrayType([1, 2]);
 
-    it('should add the given model', function () {
-        Model = require('./model/model')(sequelize);
-    });
+    result.should.equal('INTEGER');
+  });
 
-    it('should have imported the exemple model', function () {
-        sequelize.models.should.have.property('model');
-    });
+  it('`getLanguageArrayType()` of an array of mixed objects should return `STRING`', () => {
+    const result = SequelizeI18N.getLanguageArrayType(['1', 2]);
 
-});
+    result.should.equal('STRING');
+  });
 
-describe('Sequelize-i18n', function () {
+  it('should have imported the example model', () =>
+    sequelize.models.should.have.property('model'));
 
-    it('i18n should have the correct languages list', function () {
+  it('i18n should have the correct language list', () => {
+    i18n.languages.length.should.equal(languages.list.length);
 
-        i18n.languages.length.should.equal(languages.list.length);
-        var is_equal = true;
+    for (let index = 0; index < languages.list.length; index += 1) {
+      i18n.languages[index].should.equal(languages.list[index]);
+    }
+  });
 
-        for (var i = 0; i < languages.list.length; i++) {
-            i18n.languages[i].should.equal(languages.list[i]);
-        }
-    });
+  it(`i18n should have \`${languages.default}\` as default language`, () =>
+    i18n.defaultLanguage.should.equal(languages.default));
 
-    it('i18n should have "' + languages.default + '" as default language', function () {
-        i18n.default_language.should.equal(languages.default);
-    });
+  it('should have created the i18n model table', () =>
+    sequelize.models.should.have.property('model_i18n'));
 
-    it('should have created the model i18n table', function () {
-        sequelize.models.should.have.property('model_i18n');
-    });
+  it('should have a `model` and `model_i18ns` tables', (done) => {
+    sequelize
+      .showAllSchemas()
+      .then((result) => {
+        result.should.not.equal(null);
+        result.length.should.equal(2);
+        result[0].should.equal('model');
+        result[1].should.equal('model_i18ns');
 
-    it('should synchronize database', function (done) {
-        sequelize.sync({force: true})
-            .then(function () {
-                done();
-            })
-            .catch(function (error) {
-                done(error);
-            });
-    });
+        done();
+      })
+      .catch(error => done(error));
+  });
 
-    it('should have a "model" and "model_i18ns" table', function (done) {
-        sequelize.showAllSchemas()
-            .then(function (result) {
-                result.should.not.equal(null);
-                result.length.should.equal(2);
-                result[0].should.equal('model');
-                result[1].should.equal('model_i18ns');
-                done();
-            })
-    });
+  it('should return the created model with the i18n property', (done) => {
+    TestModel
+      .create({
+        id: 2,
+        label: 'test',
+        reference: 'xxx',
+      })
+      .then(() => done())
+      .catch(error => done(error));
+  });
 
-});
+  it('should return i18n values', () =>
+    TestModel
+      .findById(1)
+      .then((result) => {
+        result.should.have.property('model_i18n');
+        result.model_i18n.length.should.equal(1);
+        result.model_i18n[0].should.have.property('label');
+        result.model_i18n[0].label.should.equal('test');
+      })
+      .catch(() => {}));
 
-describe('Sequelize-i18n create', function () {
-    it('should return the created model with the i18n property', function (done) {
-        Model.create({
-                id: 1,
-                label: 'test',
-                reference: "xxx"
-            })
-            .then(function (result) {
-                if (result) {
-                    instance = result;
-                    return done();
-                }
-            })
-            .catch(function (error) {
-                done(error);
-            })
-    });
-});
+  it('should return i18n values when the filter is on the i18n field', () =>
+    TestModel
+      .findOne({ where: { label: 'test' } })
+      .then((result) => {
+        result.should.have.property('model_i18n');
+        result.model_i18n.length.should.equal(1);
+        result.model_i18n[0].should.have.property('label');
+        result.model_i18n[0].label.should.equal('test');
+      })
+      .catch(() => {}));
 
-describe('Sequelize-i18n find', function () {
-    it('should return i18n values', function () {
-        return Model.findById(1).then(function (result) {
-            result.should.have.property('model_i18n');
-            result['model_i18n'].length.should.equal(1);
-            result['model_i18n'][0].should.have.property('label');
-            result['model_i18n'][0]['label'].should.equal("test");
-        }).catch(function (e) {
-            console.log('erreur : ' + e);
-        });
-    });
-
-    it('should return i18n values when filter on field i18n', function () {
-        return Model.findOne({where: {label: "test"}}).then(function (result) {
-            result.should.have.property('model_i18n');
-            result['model_i18n'].length.should.equal(1);
-            result['model_i18n'][0].should.have.property('label');
-            result['model_i18n'][0]['label'].should.equal("test");
-        }).catch(function (e) {
-            console.log('erreur : ' + e);
-        });
-    });
-
-});
-
-
-describe('Sequelize-i18n update', function () {
-    it('should set the name property to test2 for default language', function () {
-        return instance.update({label: "test-fr-update"}, {language_id: "FR"}).then(function (res) {
-            instance.get_i18n("FR").label.should.equal('test-fr-update');
-        })
-    });
-
-    it('should set the name property to test-en-update for EN', function () {
-        return instance.update({label: "test-en-update"}, {language_id: "EN"}).then(function (res) {
-            return Model.find({where: {id: 1}})
-                .then(function (_result) {
-                    _result.get_i18n("EN").label.should.equal('test-en-update');
-                })
-        })
-    });
-});
-
-
-describe('Sequelize-i18n delete', function () {
-    it('should delete current instance and its i18n values', function () {
-        return instance.destroy();
-    });
+  it('should delete current instance and its i18n values', () => instance.destroy());
 });
