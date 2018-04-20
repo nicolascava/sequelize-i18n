@@ -151,5 +151,7 @@ describe('SequelizeI18N', () => {
       })
       .catch(() => {}));
 
+  // TODO: add tests to check if model update works.
+
   it('should delete current instance and its i18n values', () => instance.destroy());
 });
