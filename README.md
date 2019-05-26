@@ -60,7 +60,6 @@ const ProductModel = sequelize.import('product', product)
 * `i18nDefaultScope`: add i18n to the default model scope.
 * `addI18NScope`: add i18n scope to model.
 * `injectI18NScope`: inject i18n to model scopes.
-* `defaultLanguageFallback`: fallback to default language if we can't find a value for the given language.
 
 ## How it works
 
@@ -89,6 +88,12 @@ The `name` property type is set to `VIRTUAL`.
 
 Sequelize i18n will set hooks into models on `create`, `find`, `update`, and `delete` operations.
 
+Sequelize i18n will add the functions below to the mode:
+
+* `getI18N(language)`: Get the translation row for a given language
+* `AddI18N(values, language)`: Add a new translation using a different language ID. Values represents the fields to add in the form of `{field: value, field2: value}`
+* `DeleteI18N(language)`: Remove the translation row for a given language. 
+
 ### Creation
 
 ```javascript
@@ -104,6 +109,31 @@ ProductModel
   });
 ```
 
+OR
+
+```javascript
+ProductModel
+  .create({
+    id: 1,
+    name: 'test',
+    reference: 'xxx',
+  })
+  .then((result) => {
+    // [{ name: 'test', lang: 'FR' }]
+    console.info(result.getI18N('FR'));
+  });
+```
+
+### Add new Translation
+
+```javascript
+productInstance
+  .AddI18N({name: 'test EN' }, 'EN')
+  .then((result) => {
+    // ...
+  });
+```
+
 ### Update 
 
 ```javascript
@@ -115,6 +145,16 @@ productInstance
 
 productInstance
   .update({ name: 'New Name' }, { language_id: 'EN' })
+  .then((result) => {
+    // ...
+  });
+```
+
+### Delete 
+
+```javascript
+productInstance
+  .deleteI18N('EN')
   .then((result) => {
     // ...
   });
