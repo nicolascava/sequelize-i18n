@@ -17,7 +17,7 @@ var tb1 = function(sequelize, DataTypes) {
 				type: DataTypes.STRING,
 			},
 		}, {
-			freezeTableName: true,						
+			freezeTableName: true,			
 		}
 	);
 }
@@ -37,6 +37,9 @@ var tb2 = function(sequelize, DataTypes) {
 			},
 		}, {
 			freezeTableName: true,
+			i18n: {
+				underscored: false,
+			}
 		}
 	);
 }
