@@ -61,6 +61,22 @@ const ProductModel = sequelize.import('product', product)
 * `addI18NScope`: add i18n scope to model.
 * `injectI18NScope`: inject i18n to model scopes.
 
+### Model Options
+
+This options can be set at the model level when defining them.
+Those are used in the `i18n` parameter. 
+
+example: 
+
+```javascript
+i18n: {
+				underscored: false,
+			}
+```
+
+* `underscored`: set the value of `underscored` option in sequelize when generating the table name.
+
+
 ## How it works
 
 Sequelize i18n will check for i18n property in your model.

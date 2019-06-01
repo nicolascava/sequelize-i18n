@@ -3,3 +3,4 @@
 .DS_Store
 *.log*
 manualRun.js
+*.sqlite

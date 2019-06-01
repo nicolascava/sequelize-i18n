@@ -51,7 +51,7 @@ class SequelizeI18N {
 			i18nDefaultScope : true,
 			addI18NScope : true,
 			injectI18NScope : true,
-			suffix: '_i18n',
+			suffix: '_i18n',		
 		};
 
 		this.baseOptions =  _.assign({}, defaultOptions, options);	  
@@ -89,7 +89,7 @@ class SequelizeI18N {
 		this.sequelize.define(name, attributes, {
 			indexes: options.indexes,
 			timestamps: false,
-			underscored: true,
+			underscored: options.underscored || true,
 		});
 
 		return {
@@ -336,6 +336,7 @@ class SequelizeI18N {
 			const mutableOptions = options;
 			const baseOptions = {
 				indexes: [],
+				underscored: mutableOptions.i18n? (mutableOptions.i18n.underscored && true): true,
 			};
 			const pk = this.getModelUniqueKey(mutableModel);		
 
