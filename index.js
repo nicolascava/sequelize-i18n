@@ -89,7 +89,7 @@ class SequelizeI18N {
 		this.sequelize.define(name, attributes, {
 			indexes: options.indexes,
 			timestamps: false,
-			underscored: options.underscored || true,
+			underscored: options.underscored,
 		});
 
 		return {
