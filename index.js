@@ -212,7 +212,8 @@ class SequelizeI18N {
 				const i18nRealModel = this.sequelize.models[i18nModel.name];
 
 				if(i18nModel) {
-					model.i18nModel = i18nModel;					
+					model.i18nModel = i18nModel;	
+					model.i18n = i18nRealModel;			
 
 					this.sequelize.models[model.name].hasMany( i18nRealModel, {
 						as: i18nRealModel.name,
@@ -277,7 +278,7 @@ class SequelizeI18N {
 							.catch(error => error);						
 					};
 
-					//add ability to remove a translation for another language			
+					//add ability to retrieve a translation for another language			
 					model.prototype.getI18N = function (languageID) {	
 						const model = this.sequelize.models[this.constructor.getTableName()];
 						const i18nModel = model.i18nModel;					
