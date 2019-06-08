@@ -280,7 +280,7 @@ class SequelizeI18N {
 
 					//add ability to retrieve a translation for another language			
 					model.prototype.getI18N = function (languageID) {	
-						const model = this.sequelize.models[this.constructor.getTableName()];
+						const model = this.sequelize.models[this.constructor.name];
 						const i18nModel = model.i18nModel;					
 
 						if(!i18nModel) return
