@@ -262,8 +262,7 @@ class SequelizeI18N {
 							})
 							.then(() =>	instance.reload({
 								language_id: languageID
-							}))
-							.catch(error => error);						
+							}));					
 					};
 
 					//add ability to remove a translation for another language			
@@ -280,9 +279,7 @@ class SequelizeI18N {
 									language_id: languageID,
 									parent_id: instance.id,
 								}
-							})
-							.then(() =>	instance.reload())
-							.catch(error => error);						
+							});					
 					};
 
 					//add ability to retrieve a translation for another language			
