@@ -225,7 +225,8 @@ class SequelizeI18N {
 						unique: 'i18n_unicity_constraint',
 					});
 					
-					model.addHook('beforeFind','beforeFind_i18n', this.beforeFind);					
+					model.addHook('beforeFind','addLanguage_i18n', this.addLanguage);										
+					model.addHook('beforeFind','beforeFind_i18n', this.beforeFind);																	
 					model.addHook('afterCreate','afterCreate_i18n', this.afterCreate);
 					model.addHook('afterUpdate','afterUpdate_i18n', this.afterUpdate);
 					model.addHook('afterDestroy','afterDelete_i18n', this.afterDelete);		
@@ -259,7 +260,9 @@ class SequelizeI18N {
 								where: whereClause,								
 								defaults: i18nOptions,
 							})
-							.then(() =>	instance.reload())
+							.then(() =>	instance.reload({
+								language_id: languageID
+							}))
 							.catch(error => error);						
 					};
 
@@ -419,10 +422,9 @@ class SequelizeI18N {
 		});
 	}
 
-	beforeFind(options) {    
+	addLanguage(options) {    
 		const mutableOptions = options;
-		const i18nModel = this.i18nModel;	
-		
+
 		//add the language value to the virtual field if provided so it can be used by each instances returned
 		if(this.rawAttributes.language_id && 
 			this.rawAttributes.language_id.type == 'VIRTUAL' &&
@@ -433,6 +435,11 @@ class SequelizeI18N {
 				
 			mutableOptions.attributes.push([this.sequelize.literal('\'' + mutableOptions.language_id + '\''), 'language_id']);
 		}
+	}
+
+	beforeFind(options) {    
+		const mutableOptions = options;
+		const i18nModel = this.i18nModel;	
 
 		if (mutableOptions && mutableOptions.where && i18nModel) {
 			Object.keys(mutableOptions.where).forEach((prop) => {
