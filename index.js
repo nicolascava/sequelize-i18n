@@ -331,7 +331,10 @@ class SequelizeI18N {
 		return this
 			.sequelize
 			.models[i18nModel.name]
-			.upsert(i18nOptions)
+			.update(i18nOptions, {where: {
+				parent_id: i18nOptions.parent_id,
+				language_id: i18nOptions.language_id,
+			}})
 			.then(() =>	instance.reload());
 	}
 
