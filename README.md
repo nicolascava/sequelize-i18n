@@ -107,6 +107,7 @@ Sequelize i18n will set hooks into models on `create`, `find`, `update`, and `de
 
 If `language_id` is added to the options of a query of type `Find` (`FindAll`, `FindOne` etc ...), language ID will be hard-coded for each instance in the column `language_id`.
 This way, the requested language can be used in the results (convenient for use with GraphQL for example).
+If the where clause includes `language_id`, the same behavior will happen so it does not need to be added as an option to the `Find` command.
 
 Sequelize i18n will add the functions below to the model:
 
@@ -187,6 +188,22 @@ ProductModel
   .finAll({
 	  where: whereClauseObject,
 	  language_id: 'EN',
+  })
+  .then((result) => {
+    // 'EN'
+    console.info(result.language_id);
+  });
+```
+
+OR
+
+```javascript
+ProductModel
+  .finAll({
+	  where: {
+			id: 'XXXX',
+			language_id: 'EN',
+	  },	  
   })
   .then((result) => {
     // 'EN'

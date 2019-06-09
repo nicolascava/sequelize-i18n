@@ -427,13 +427,15 @@ class SequelizeI18N {
 
 		//add the language value to the virtual field if provided so it can be used by each instances returned
 		if(this.rawAttributes.language_id && 
-			this.rawAttributes.language_id.type == 'VIRTUAL' &&
-			mutableOptions.language_id) {
+			this.rawAttributes.language_id.type == 'VIRTUAL' && 
+			(mutableOptions.language_id || (mutableOptions.where && mutableOptions.where.language_id))) {
 			
 			if(!mutableOptions.attributes)
 				mutableOptions.attributes = [...Object.keys(this.tableAttributes)];
-				
-			mutableOptions.attributes.push([this.sequelize.literal('\'' + mutableOptions.language_id + '\''), 'language_id']);
+
+			const locale = mutableOptions.language_id || mutableOptions.where.language_id;
+
+			mutableOptions.attributes.push([this.sequelize.literal('\'' + locale + '\''), 'language_id']);
 		}
 	}
 
