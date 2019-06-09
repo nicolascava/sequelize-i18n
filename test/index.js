@@ -205,6 +205,17 @@ describe('SequelizeI18N', () => {
 		.catch(e => e);
 	});
 
+	it('should return the hard-coded language ID', (done) => {
+		table1
+		.findByPk(1, {language_id: 'EN'})		
+		.then((r) => {			
+			r.should.have.property('language_id');
+			r.language_id.should.equal('EN');
+			done();
+		})
+		.catch(e => e);
+	});
+
   	it('should delete current instance and its i18n values', () => instance.destroy());
 });
 

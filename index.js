@@ -375,7 +375,14 @@ class SequelizeI18N {
 						type: mutableModel[prop].type,
 					};
 					
-					mutableModel[prop].type = this.sequelize.Sequelize.VIRTUAL;				
+					mutableModel[prop].type = this.sequelize.Sequelize.VIRTUAL;	
+					
+					//add a VIRTUAL field for language_id to be added to the FIND queries
+					if(!mutableModel.language_id || mutableModel.language_id.type != this.sequelize.Sequelize.VIRTUAL){
+						mutableModel.language_id = {
+							type: this.sequelize.Sequelize.VIRTUAL
+						};
+					}
 				}
 			});
 
@@ -414,7 +421,18 @@ class SequelizeI18N {
 
 	beforeFind(options) {    
 		const mutableOptions = options;
-		const i18nModel = this.i18nModel;				
+		const i18nModel = this.i18nModel;	
+		
+		//add the language value to the virtual field if provided so it can be used by each instances returned
+		if(this.rawAttributes.language_id && 
+			this.rawAttributes.language_id.type == 'VIRTUAL' &&
+			mutableOptions.language_id) {
+			
+			if(!mutableOptions.attributes)
+				mutableOptions.attributes = [...Object.keys(this.tableAttributes)];
+				
+			mutableOptions.attributes.push([this.sequelize.literal('\'' + mutableOptions.language_id + '\''), 'language_id']);
+		}
 
 		if (mutableOptions && mutableOptions.where && i18nModel) {
 			Object.keys(mutableOptions.where).forEach((prop) => {

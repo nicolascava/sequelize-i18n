@@ -101,14 +101,10 @@ A `product_i18n` model will be created, with the following columns:
 * `name`: the i18n value (same as `Product.name.type`).
 
 The `name` property type is set to `VIRTUAL`.
-The `language_id` property type is added as `VIRTUAL` into `Product`.
 
 Sequelize i18n will set hooks into models on `create`, `find`, `update`, and `delete` operations.
 
-If `language_id` is added to the options of a query of type `Find` (`FindAll`, `FindOne` etc ...), language ID will be hard-coded for each instance in the column `language_id`.
-This way, the requested language can be used in the results (convenient for use with GraphQL for example).
-
-Sequelize i18n will add the functions below to the model:
+Sequelize i18n will add the functions below to the mode:
 
 * `getI18N(language)`: Get the translation row for a given language
 * `AddI18N(values, language)`: Add a new translation using a different language ID. Values represents the fields to add in the form of `{field: value, field2: value}`
@@ -177,20 +173,6 @@ productInstance
   .deleteI18N('EN')
   .then((result) => {
     // ...
-  });
-```
-
-### Find requests
-
-```javascript
-ProductModel
-  .finAll({
-	  where: whereClauseObject,
-	  language_id: 'EN',
-  })
-  .then((result) => {
-    // 'EN'
-    console.info(result.language_id);
   });
 ```
     
