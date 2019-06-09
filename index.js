@@ -233,7 +233,7 @@ class SequelizeI18N {
 					//add ability to add a translation for another language			
 					model.prototype.addI18N = function (newValues, languageID) {				
 						const instance = this;
-						const model = this.sequelize.models[this.constructor.getTableName()];
+						const model = this.sequelize.models[this.constructor.name];
 						const i18nModel = model.i18nModel;						
 						const baseOptions = this.sequelize.options.i18nOptions || {};
 
