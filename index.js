@@ -201,7 +201,10 @@ class SequelizeI18N {
 			.then(() => {
 				return instance.reload();
 			})
-			.catch(error => instance.destroy({ force: true }).then(() => error));		
+			.catch(error => {
+				instance.error = error;
+				return instance.destroy({ force: true }).then(() => error);
+			});		
 	}
 
 	afterDefine() {
