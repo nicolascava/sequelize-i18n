@@ -86,11 +86,7 @@ class SequelizeI18N {
 	createI18NModel(name, attributes, options, baseModelName) {
 		if (!attributes) throw new Error('Could not create i18n model without attributes');
 
-		this.sequelize.define(name, attributes, {
-			indexes: options.indexes,
-			timestamps: false,
-			underscored: options.underscored,
-		});
+		this.sequelize.define(name, attributes, options);
 
 		return {
 			base: {
@@ -282,7 +278,7 @@ class SequelizeI18N {
 							});					
 					};
 
-					//add ability to retrieve a translation for another language			
+					//add ability to remove a translation for another language			
 					model.prototype.getI18N = function (languageID) {	
 						const model = this.sequelize.models[this.constructor.name];
 						const i18nModel = model.i18nModel;					
@@ -344,6 +340,8 @@ class SequelizeI18N {
 			const mutableOptions = options;
 			const baseOptions = {
 				indexes: [],
+				paranoid: mutableOptions.paranoid,
+				timestamps: mutableOptions.timestamps,
 				underscored: mutableOptions.i18n? (mutableOptions.i18n.underscored && true): true,
 			};
 			const pk = this.getModelUniqueKey(mutableModel);		
@@ -367,10 +365,17 @@ class SequelizeI18N {
 						},
 					};
 
+					//if paranoid mode, the deleted element stays in the DB so we need to add the field deletedAt to the unique key (field created by using paranoid)
+					if(mutableOptions.paranoid == true)
+						schema.deleteAt = {
+							type: this.sequelize.Sequelize.DATE,
+							unique: 'i18n_unicity_constraint',
+						};
+
 					if ('unique' in mutableModel[prop] && (mutableModel[prop].unique === true)) {
 						baseOptions.indexes.push({
 							unique: true,
-							fields: ['language_id', prop],
+							fields: mutableOptions.paranoid == true ? ['language_id', 'deletedAt', prop]: ['language_id', prop],
 						});
 					}
 
@@ -441,39 +446,39 @@ class SequelizeI18N {
 
 	beforeFind(options) {    
 		const mutableOptions = options;
-		const i18nModel = this.i18nModel;	
+		const i18nModel = this.i18nModel;
 
 		if (mutableOptions && mutableOptions.where && i18nModel) {
 			Object.keys(mutableOptions.where).forEach((prop) => {
-			if (prop in i18nModel.model) {
-				mutableOptions.include = mutableOptions.include || [];
+				if (prop in i18nModel.model) {
+					mutableOptions.include = mutableOptions.include || [];
 
-				mutableOptions.include.forEach((incl) => {
-				const mutableIncl = incl;
+					mutableOptions.include.forEach((incl) => {
+					const mutableIncl = incl;
 
-				if (mutableIncl.model.name === i18nModel.name) {
-					mutableIncl.where = mutableIncl.where || {};
-					mutableIncl.where[prop] = mutableOptions.where[prop];
+					if (mutableIncl.model.name === i18nModel.name) {
+						mutableIncl.where = mutableIncl.where || {};
+						mutableIncl.where[prop] = mutableOptions.where[prop];
+					}
+					});
+
+					delete mutableOptions.where[prop];
 				}
-				});
 
-				delete mutableOptions.where[prop];
-			}
+				if (Array.isArray(mutableOptions.where[prop])) {
+					mutableOptions.include = mutableOptions.include || [];
 
-			if (Array.isArray(mutableOptions.where[prop])) {
-				mutableOptions.include = mutableOptions.include || [];
+					mutableOptions.include.forEach((incl) => {
+					const mutableIncl = incl;
 
-				mutableOptions.include.forEach((incl) => {
-				const mutableIncl = incl;
+					if (mutableIncl.model.name === i18nModel.name) {
+						mutableIncl.where = mutableIncl.where || {};
+						mutableIncl.where[prop] = mutableOptions.where[prop];
+					}
+					});
 
-				if (mutableIncl.model.name === i18nModel.name) {
-					mutableIncl.where = mutableIncl.where || {};
-					mutableIncl.where[prop] = mutableOptions.where[prop];
+					delete mutableOptions.where[prop];
 				}
-				});
-
-				delete mutableOptions.where[prop];
-			}
 			});
 		}
 
