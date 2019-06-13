@@ -60,7 +60,22 @@ const ProductModel = sequelize.import('product', product)
 * `i18nDefaultScope`: add i18n to the default model scope.
 * `addI18NScope`: add i18n scope to model.
 * `injectI18NScope`: inject i18n to model scopes.
-* `defaultLanguageFallback`: fallback to default language if we can't find a value for the given language.
+
+### Model Options
+
+This options can be set at the model level when defining them.
+Those are used in the `i18n` parameter. 
+
+example: 
+
+```javascript
+i18n: {
+				underscored: false,
+			}
+```
+
+* `underscored`: set the value of `underscored` option in sequelize when generating the table name.
+
 
 ## How it works
 
@@ -86,8 +101,19 @@ A `product_i18n` model will be created, with the following columns:
 * `name`: the i18n value (same as `Product.name.type`).
 
 The `name` property type is set to `VIRTUAL`.
+The `language_id` property type is added as `VIRTUAL` into `Product`.
 
 Sequelize i18n will set hooks into models on `create`, `find`, `update`, and `delete` operations.
+
+If `language_id` is added to the options of a query of type `Find` (`FindAll`, `FindOne` etc ...), language ID will be hard-coded for each instance in the column `language_id`.
+This way, the requested language can be used in the results (convenient for use with GraphQL for example).
+If the where clause includes `language_id`, the same behavior will happen so it does not need to be added as an option to the `Find` command.
+
+Sequelize i18n will add the functions below to the model:
+
+* `getI18N(language)`: Get the translation row for a given language
+* `AddI18N(values, language)`: Add a new translation using a different language ID. Values represents the fields to add in the form of `{field: value, field2: value}`
+* `DeleteI18N(language)`: Remove the translation row for a given language. 
 
 ### Creation
 
@@ -104,6 +130,31 @@ ProductModel
   });
 ```
 
+OR
+
+```javascript
+ProductModel
+  .create({
+    id: 1,
+    name: 'test',
+    reference: 'xxx',
+  })
+  .then((result) => {
+    // [{ name: 'test', lang: 'FR' }]
+    console.info(result.getI18N('FR'));
+  });
+```
+
+### Add new Translation
+
+```javascript
+productInstance
+  .AddI18N({name: 'test EN' }, 'EN')
+  .then((result) => {
+    // ...
+  });
+```
+
 ### Update 
 
 ```javascript
@@ -117,6 +168,46 @@ productInstance
   .update({ name: 'New Name' }, { language_id: 'EN' })
   .then((result) => {
     // ...
+  });
+```
+
+### Delete 
+
+```javascript
+productInstance
+  .deleteI18N('EN')
+  .then((result) => {
+    // ...
+  });
+```
+
+### Find requests
+
+```javascript
+ProductModel
+  .finAll({
+	  where: whereClauseObject,
+	  language_id: 'EN',
+  })
+  .then((result) => {
+    // 'EN'
+    console.info(result.language_id);
+  });
+```
+
+OR
+
+```javascript
+ProductModel
+  .finAll({
+	  where: {
+			id: 'XXXX',
+			language_id: 'EN',
+	  },	  
+  })
+  .then((result) => {
+    // 'EN'
+    console.info(result.language_id);
   });
 ```
     

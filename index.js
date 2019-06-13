@@ -1,463 +1,544 @@
-import _ from 'lodash';
-
-export default class SequelizeI18N {
-  // Get i18n table name from a base table name
-  static getI18NName(modelName) {
-    return `${modelName}_i18n`;
-  }
-
-  static getLanguageArrayType(arr) {
-    let isNumber = true;
-
-    for (let index = 0; index < arr.length; index += 1) {
-      if (typeof arr[index] !== 'number') isNumber = false;
-    }
-
-    return isNumber ? 'INTEGER' : 'STRING';
-  }
-
-  static getModelUniqueKey(model) {
-    let pk = _.filter(model, obj => obj.primaryKey === true);
-
-    if (!(pk && pk.length)) pk = _.filter(model, obj => obj.unique === true);
-
-    pk = pk[0] || null;
-
-    return pk;
-  }
-
-  static toArray(obj) {
-    if (obj) {
-      if (Array.isArray(obj)) return obj;
-
-      return [obj];
-    }
-
-    return [];
-  }
-
-  constructor(sequelize, options) {
-    const baseOptions = options || {};
-
-    this.sequelize = sequelize;
-
-    if (!(
-      baseOptions.languages &&
-      Array.isArray(baseOptions.languages) &&
-      baseOptions.languages.length
-    )) {
-      throw new Error('Language list is mandatory and can\'t be empty');
-    }
-
-    this.languages = baseOptions.languages;
-
-    if (baseOptions.defaultLanguage && !this.isValidLanguage(baseOptions.defaultLanguage)) {
-      throw new Error('Default language is invalid');
-    }
-
-    this.defaultLanguage = baseOptions.defaultLanguage;
-    this.defaultLanguageFallback = baseOptions.defaultLanguageFallback !== null ?
-      baseOptions.defaultLanguageFallback : true;
-
-    this.i18nDefaultScope = baseOptions.i18nDefaultScope !== null ?
-      baseOptions.i18nDefaultScope : true;
-    this.addI18NScope = baseOptions.addI18NScope !== null ?
-      baseOptions.addI18NScope : true;
-    this.injectI18NScope = baseOptions.injectI18NScope !== null ?
-      baseOptions.injectI18NScope : true;
-
-    const key = SequelizeI18N.getLanguageArrayType(baseOptions.languages);
-
-    this.languageType = sequelize.Sequelize[key];
-    this.i18nModels = [];
-  }
-
-  init() {
-    this.beforeDefine();
-    this.afterDefine();
-  }
-
-  // Check if a language is valid (e.q. the given language is in the languages list)
-  isValidLanguage(language) {
-    return this.languages.indexOf(language) >= 0;
-  }
-
-  // Get i18n model from the base model name
-  getI18NModel(modelName) {
-    const model = _.filter(this.i18nModels, obj => obj.target.name === modelName);
-
-    if (model && model.length) return model[0].base;
-
-    return null;
-  }
-
-  // Create and define a new i18n model
-  createI18NModel(name, attributes, options, baseModelName) {
-    if (!attributes) throw new Error('Could not create i18n model without attributes');
-
-    this.sequelize.define(name, attributes, {
-      indexes: options.indexes,
-      timestamps: false,
-      underscored: true,
-    });
-
-    return {
-      base: {
-        name,
-        defined: true,
-        model: attributes,
-      },
-      target: {
-        name: baseModelName,
-        defined: false,
-      },
-    };
-  }
-
-  // Add i18n in base model default scope
-  setDefaultScope(defaultScope, name) {
-    if (!name) return defaultScope;
-
-    const mutableDefaultScope = defaultScope;
-
-    mutableDefaultScope.include = SequelizeI18N.toArray(mutableDefaultScope.include);
-    mutableDefaultScope.include.push({
-      model: this.sequelize.models[name],
-      as: name,
-    });
-
-    return null;
-  }
-
-  // Inject i18n in base model user defined scopes
-  injectI18NScope(scopes, name) {
-    const mutableScopes = scopes;
-
-    Object.keys(mutableScopes).forEach((scope) => {
-      mutableScopes[scope].include = SequelizeI18N.toArray(mutableScopes[scope].include);
-      mutableScopes[scope].include.push({
-        model: this.sequelize.models[name],
-        as: name,
-        attributes: {
-          exclude: ['id', 'parent_id'],
-        },
-      });
-    });
-  }
-
-  // Add i18n in base model scopes
-  addI18NScope(scopes, name) {
-    const mutableScopes = scopes;
-
-    mutableScopes.i18n = () => ({
-      include: {
-        model: this.sequelize.models[name],
-        as: name,
-        attributes: {
-          exclude: ['id', 'parent_id'],
-        },
-      },
-    });
-  }
-
-  // Define model instance methods
-  setInstanceMethods(baseInstanceMethods, i18nModelName) {
-    const mutableBaseInstanceMethods = baseInstanceMethods;
-
-    mutableBaseInstanceMethods.setI18N = this.setI18N(i18nModelName);
-    mutableBaseInstanceMethods.getI18N = this.getI18N(i18nModelName);
-  }
-
-  afterCreate() {
-    return (instance, options, fn) => {
-      const i18nModel = this.getI18NModel(this.name);
-
-      if (i18nModel === null) return fn();
-
-      const i18nOptions = {};
-
-      if (instance && instance.dataValues && i18nModel.model) {
-        Object.keys(instance.dataValues).forEach((prop) => {
-          if (prop in i18nModel.model) i18nOptions[prop] = instance.dataValues[prop];
-        });
-
-        i18nOptions.languageID = this.defaultLanguage;
-
-        if (options.languageID) i18nOptions.languageID = options.languageID;
-
-        i18nOptions.parentID = instance.dataValues.id;
-      }
-
-      return this
-        .sequelize
-        .models[i18nModel.name]
-        .findOrCreate({
-          where: {
-            language_id: i18nOptions.languageID,
-            parent_id: i18nOptions.parentID,
-          },
-
-          // TODO: probably a bad key mapping here.
-          defaults: i18nOptions,
-        })
-        .then(() =>
-          instance
-            .reload()
-            .then(() => fn()))
-        .catch(error =>
-          instance
-            .destroy({ force: true })
-            .then(() => fn(error)));
-    };
-  }
-
-  afterDefine() {
-    this.sequelize.afterDefine('afterDefine_i18n', (model) => {
-      const i18nModelName = this.getI18NModel(model.name);
-
-      if (i18nModelName) {
-        this.sequelize.models[model.name].hasMany(
-          this.sequelize.models[i18nModelName.name],
-          {
-            as: i18nModelName.name,
-            foreignKey: 'parent_id',
-            unique: 'i18n_unicity_constraint',
-          },
-        );
-      }
-    });
-  }
-
-  afterDelete() {
-    return (instance, options, fn) => {
-      const i18nModel = this.getI18NModel(this.name);
-
-      if (i18nModel === null) return fn();
-
-      return this
-        .sequelize
-        .models[i18nModel.name]
-        .destroy({
-          where: {
-            parent_id: instance.id,
-          },
-        })
-        .then(() => fn())
-        .catch(error => fn(error));
-    };
-  }
-
-  afterUpdate() {
-    return (instance, options, fn) => {
-      const i18nModel = this.getI18NModel(this.name);
-
-      if (i18nModel === null) return fn();
-
-      const i18nOptions = {};
-
-      if (instance && instance.dataValues && i18nModel.model) {
-        Object.keys(instance.dataValues).forEach((prop) => {
-          if (prop in i18nModel.model) i18nOptions[prop] = instance.dataValues[prop];
-        });
-
-        i18nOptions.languageID = this.defaultLanguage;
-
-        if (options.languageID) i18nOptions.languageID = options.languageID;
-
-        i18nOptions.parentID = instance.dataValues.id;
-      }
-
-      return this
-        .sequelize
-        .models[i18nModel.name]
-        .upsert(i18nOptions)
-        .then(() =>
-          instance
-            .reload()
-            .then(() => fn()));
-    };
-  }
-
-  beforeDefine() {
-    this.sequelize.beforeDefine('beforeDefine_i18n', (model, options) => {
-      const mutableModel = model;
-      const mutableOptions = options;
-      const baseOptions = {
-        indexes: [],
-      };
-      const pk = SequelizeI18N.getModelUniqueKey(mutableModel);
-
-      let schema = null;
-
-      Object.keys(mutableModel).forEach((prop) => {
-        if ('i18n' in mutableModel[prop] && (mutableModel[prop].i18n === true)) {
-          if (!pk) {
-            throw new Error(`No primary or unique key found for ${mutableOptions.modelName} model`);
-          }
-
-          schema = schema || {
-            language_id: {
-              type: this.languageType,
-              unique: 'i18n_unicity_constraint',
-            },
-            parent_id: {
-              type: pk.type,
-              unique: 'i18n_unicity_constraint',
-            },
-          };
-
-          if ('unique' in mutableModel[prop] && (mutableModel[prop].unique === true)) {
-            baseOptions.indexes.push({
-              unique: true,
-              fields: ['language_id', prop],
-            });
-          }
-
-          schema[prop] = {
-            type: mutableModel[prop].type,
-          };
-          mutableModel[prop].type = this.sequelize.Sequelize.VIRTUAL;
-        }
-      });
-
-      if (schema) {
-        const name = SequelizeI18N.getI18NName(mutableOptions.modelName);
-        const createdModel = this.createI18NModel(
-          SequelizeI18N.getI18NName(mutableOptions.modelName),
-          schema,
-          baseOptions,
-          mutableOptions.modelName,
-        );
-
-        this.i18nModels.push(createdModel);
-
-        if (this.i18nDefaultScope) {
-          mutableOptions.defaultScope = mutableOptions.defaultScope || {};
-          this.setDefaultScope(mutableOptions.defaultScope, name);
-        }
-
-        if (this.addI18NScope) {
-          mutableOptions.scopes = mutableOptions.scopes || {};
-          this.addI18NScope(mutableOptions.scopes, name);
-        }
-
-        if (this.injectI18NScope) {
-          mutableOptions.scopes = mutableOptions.scopes || {};
-          this.injectI18NScope(mutableOptions.scopes, name);
-        }
-
-        mutableOptions.instanceMethods = mutableOptions.instanceMethods || {};
-        this.setInstanceMethods(mutableOptions.instanceMethods, name);
-
-        mutableOptions.hooks = mutableOptions.hooks || {};
-        mutableOptions.hooks.beforeFind = this.beforeFind();
-        mutableOptions.hooks.afterCreate = this.afterCreate();
-        mutableOptions.hooks.afterUpdate = this.afterUpdate();
-        mutableOptions.hooks.afterDelete = this.afterDelete();
-      }
-    });
-  }
-
-  beforeFind() {
-    return (options) => {
-      const mutableOptions = options;
-      const i18nModel = this.getI18NModel(this.name);
-
-      if (mutableOptions && mutableOptions.where && i18nModel) {
-        Object.keys(mutableOptions.where).forEach((prop) => {
-          if (prop in i18nModel.model) {
-            mutableOptions.include = mutableOptions.include || [];
-
-            mutableOptions.include.forEach((incl) => {
-              const mutableIncl = incl;
-
-              if (mutableIncl.model.name === i18nModel.name) {
-                mutableIncl.where = mutableIncl.where || {};
-                mutableIncl.where[prop] = mutableOptions.where[prop];
-              }
-            });
-
-            delete mutableOptions.where[prop];
-          }
-
-          if (Array.isArray(mutableOptions.where[prop])) {
-            mutableOptions.include = mutableOptions.include || [];
-
-            mutableOptions.include.forEach((incl) => {
-              const mutableIncl = incl;
-
-              if (mutableIncl.model.name === i18nModel.name) {
-                mutableIncl.where = mutableIncl.where || {};
-                mutableIncl.where[prop] = mutableOptions.where[prop];
-              }
-            });
-
-            delete mutableOptions.where[prop];
-          }
-        });
-      }
-
-      if (mutableOptions && mutableOptions.order && i18nModel) {
-        mutableOptions.order.forEach((prop, index) => {
-          if (prop[0] in i18nModel.model) {
-            mutableOptions.order[index] = [{
-              model: this.sequelize.models[i18nModel.name],
-              as: i18nModel.name,
-            }, prop[0], prop[1]];
-          }
-        });
-      }
-    };
-  }
-
-  getI18N(modelName) {
-    return (lang, options) => {
-      const mutableOptions = options || {};
-
-      let exit = false;
-
-      mutableOptions.defaultLanguageFallback = mutableOptions.defaultLanguageFallback !== null ?
-        mutableOptions.defaultLanguageFallback : this.defaultLanguageFallback;
-
-      if (this.defaultLanguage === null || !mutableOptions.defaultLanguageFallback) exit = true;
-
-      // TODO: model name is not defined as this in the instance which can break the whole library.
-      if (!(this[modelName] && this[modelName].length) || exit) return this;
-
-      for (let index = 0; index < this[modelName].length; index += 1) {
-        const value = this[modelName][index].toJSON();
-
-        if (value.languageID && value.languageID === lang) {
-          exit = true;
-
-          Object.keys(value).forEach((prop) => {
-            if (prop !== 'languageID' && prop !== 'parentID' && prop !== 'id') {
-              this[prop] = value[prop];
-            }
-          });
-        }
-      }
-
-      return this;
-    };
-  }
-
-  setI18N(modelName) {
-    return (lang, propertyName, value, callback) => {
-      if (!lang && !this.defaultLanguage) throw new Error('No language given');
-      if (!propertyName) throw new Error('Property name to update is missing');
-
-      const currentObjectID = this.id;
-      const options = {
-        parentID: currentObjectID,
-        languageID: lang,
-      };
-
-      options[propertyName] = value;
-
-      this.sequelize.models[modelName].upsert(options).then((result) => {
-        if (callback && (typeof callback === 'function')) callback(result);
-      });
-    };
-  }
+var _ = require('lodash');
+
+class SequelizeI18N {
+
+	get options() {
+		return this.baseOptions;
+	}
+	
+	// Get i18n table name from a base table name
+	getI18NName(modelName) {	
+		return `${modelName}${this.baseOptions.suffix}`;
+	}
+
+	getLanguageArrayType() {
+		let isNumber = true;
+		const arr = this.baseOptions.languages;
+
+		for (let index = 0; index < arr.length; index += 1) {
+			if (typeof arr[index] !== 'number') {
+				isNumber = false;
+				break;
+			}
+		}
+
+		return isNumber ? 'INTEGER' : 'STRING';
+	}
+
+	getModelUniqueKey(model) {
+		let pk = _.filter(model, obj => obj.primaryKey === true);
+
+		if (!(pk && pk.length)) pk = _.filter(model, obj => obj.unique === true);
+
+		pk = pk[0] || null;
+
+		return pk;
+	}
+
+	toArray(obj) {
+		if (obj) {
+			if (Array.isArray(obj)) return obj;
+
+			return [obj];
+		}
+
+		return [];
+	}
+
+	constructor(sequelize, options) {	
+		
+		var defaultOptions = {	
+			i18nDefaultScope : true,
+			addI18NScope : true,
+			injectI18NScope : true,
+			suffix: '_i18n',		
+		};
+
+		this.baseOptions =  _.assign({}, defaultOptions, options);	  
+		this.excludedAttributes = ["id", "parent_id"];  
+		
+		if (!(
+				this.baseOptions.languages &&
+				Array.isArray(this.baseOptions.languages) &&
+				this.baseOptions.languages.length &&
+				this.baseOptions.defaultLanguage
+			)) {
+				throw new Error('Language list and default language are mandatory and can\'t be empty');
+		}
+
+		if (this.baseOptions.defaultLanguage && this.baseOptions.languages.indexOf(this.baseOptions.defaultLanguage) == -1) {
+			throw new Error('Default language is invalid');
+		}
+		
+		const key = this.getLanguageArrayType();
+		sequelize.options.i18nOptions = this.baseOptions;
+		this.sequelize = sequelize;
+		this.languageType = sequelize.Sequelize[key];
+		this.i18nModels = {};
+	}
+
+	init() {    
+		this.beforeDefine();
+		this.afterDefine();
+	}
+
+	// Create and define a new i18n model
+	createI18NModel(name, attributes, options, baseModelName) {
+		if (!attributes) throw new Error('Could not create i18n model without attributes');
+
+		this.sequelize.define(name, attributes, options);
+
+		return {
+			base: {
+				name,
+				defined: true,
+				model: attributes,
+			},
+			target: {
+				name: baseModelName,
+				defined: false,
+			},
+		};
+	}
+
+	getFormattedInclude(modelName){
+		const model =  this.sequelize.models[modelName];
+
+		return {
+			model: model,
+			//limit: 1,
+			as: model.name,			
+			attributes: {
+				exclude: this.excludedAttributes,
+			},
+		}
+	}
+
+	// Add i18n in base model default scope
+	setDefaultScope(defaultScope, name) {
+		if (!name) return defaultScope;
+
+		const mutableDefaultScope = defaultScope;		
+		const defInclude= this.getFormattedInclude(name);
+
+		mutableDefaultScope.include = this.toArray(mutableDefaultScope.include);		
+		mutableDefaultScope.include.push(defInclude);		
+
+		return null;
+	}
+
+	// Inject i18n in base model user defined scopes
+	injectI18NScope(scopes, name) {
+		const mutableScopes = scopes;	
+
+		Object.keys(mutableScopes).forEach((scope) => {
+			mutableScopes[scope].include = this.toArray(mutableScopes[scope].include);
+			mutableScopes[scope].include.push(this.getFormattedInclude(name));
+		});
+	}
+
+	// Add i18n in base model scopes
+	addI18NScope(scopes, name) {
+		const mutableScopes = scopes;	
+		const include = this.getFormattedInclude(name);		
+
+		//filter on language
+		mutableScopes.i18n = function (language_id) {
+			console.log('i18N scope has been invoked with language ', language_id);
+			
+			if(language_id)
+				return {
+					include,
+					where:{	language_id	}
+				}
+			
+			return {
+				include
+			}
+		};		
+	}
+
+	// Define model instance methods
+	setInstanceMethods(baseInstanceMethods, i18nModelName) {
+		const mutableBaseInstanceMethods = baseInstanceMethods;
+
+		mutableBaseInstanceMethods.setI18N = this.setI18N(i18nModelName);
+		mutableBaseInstanceMethods.getI18N = this.getI18N(i18nModelName);	
+	}
+
+	afterCreate(instance, options) {		
+		const i18nModel = this.i18nModel;
+
+		if (i18nModel === null) return;
+
+		const i18nOptions = {};
+		const baseOptions = this.sequelize.options.i18nOptions || {};
+
+		if (instance && instance.dataValues && i18nModel.model) {
+			Object.keys(instance.dataValues).forEach((prop) => {
+				if (prop in i18nModel.model) i18nOptions[prop] = instance.dataValues[prop];
+			});
+
+			i18nOptions.language_id = options.language_id || baseOptions.defaultLanguage;
+			i18nOptions.parent_id = instance.dataValues.id;
+		}			
+
+		return this
+			.sequelize
+			.models[i18nModel.name]
+			.findOrCreate({
+				where: {
+					language_id: i18nOptions.language_id,
+					parent_id: i18nOptions.parent_id,
+				},
+				// TODO: probably a bad key mapping here.
+				defaults: i18nOptions,
+			})
+			.then(() => {
+				return instance.reload();
+			})
+			.catch(error => {
+				return instance.destroy({ force: true }).then(() => {
+					throw error;
+				});
+			});		
+	}
+
+	afterDefine() {
+		this.sequelize.afterDefine('afterDefine_i18n', (model) => {			
+
+			if (this.i18nModels[model.name]) {
+				const i18nModel = this.i18nModels[model.name].base;
+				const i18nRealModel = this.sequelize.models[i18nModel.name];
+
+				if(i18nModel) {
+					model.i18nModel = i18nModel;	
+					model.i18n = i18nRealModel;			
+
+					this.sequelize.models[model.name].hasMany( i18nRealModel, {
+						as: i18nRealModel.name,
+						foreignKey: 'parent_id',
+						unique: 'i18n_unicity_constraint',
+					});
+					
+					model.addHook('beforeFind','addLanguage_i18n', this.addLanguage);										
+					model.addHook('beforeFind','beforeFind_i18n', this.beforeFind);																	
+					model.addHook('afterCreate','afterCreate_i18n', this.afterCreate);
+					model.addHook('afterUpdate','afterUpdate_i18n', this.afterUpdate);
+					model.addHook('afterDestroy','afterDelete_i18n', this.afterDelete);		
+					
+					//add ability to add a translation for another language			
+					model.prototype.addI18N = function (newValues, languageID) {				
+						const instance = this;
+						const model = this.sequelize.models[this.constructor.name];
+						const i18nModel = model.i18nModel;						
+						const baseOptions = this.sequelize.options.i18nOptions || {};
+
+						if (!newValues || !i18nModel || !languageID || !baseOptions || !_.includes(baseOptions.languages, languageID)) return;
+						
+						const i18nOptions = {
+							language_id: languageID,
+							parent_id: instance.id,
+						};
+
+						const whereClause = _.assign(i18nOptions);
+
+						if (i18nModel.model) {
+							Object.keys(newValues).forEach((prop) => {
+								if (prop in i18nModel.model) i18nOptions[prop] = newValues[prop];
+							});
+						}		
+
+						return this
+							.sequelize
+							.models[i18nModel.name]
+							.findOrCreate({
+								where: whereClause,								
+								defaults: i18nOptions,
+							})
+							.then(() =>	instance.reload({
+								language_id: languageID
+							}));					
+					};
+
+					//add ability to remove a translation for another language			
+					model.prototype.deleteI18N = function (languageID) {				
+						const instance = this;
+						
+						if (!languageID) return;								
+
+						return this
+							.sequelize
+							.models[i18nModel.name]
+							.destroy({
+								where: {
+									language_id: languageID,
+									parent_id: instance.id,
+								}
+							});					
+					};
+
+					//add ability to remove a translation for another language			
+					model.prototype.getI18N = function (languageID) {	
+						const model = this.sequelize.models[this.constructor.name];
+						const i18nModel = model.i18nModel;					
+
+						if(!i18nModel) return
+
+						return _.find(this[i18nModel.name],['language_id', languageID]);
+					};
+				}
+			}
+		});
+	}
+
+	afterDelete(instance, options, fn) {   
+		const i18nModel = this.i18nModel;
+
+		if (i18nModel === null) return;
+
+		return this
+			.sequelize
+			.models[i18nModel.name]
+			.destroy({
+				where: {
+					parent_id: instance.id,
+				},
+			}); 
+	}
+
+	afterUpdate(instance, options) {   
+		const i18nModel = this.i18nModel;
+
+		if (i18nModel === null) return;
+
+		const i18nOptions = {};
+		const baseOptions = this.sequelize.options.i18nOptions || {};
+
+		if (instance && instance.dataValues && i18nModel.model) {
+			Object.keys(instance.dataValues).forEach((prop) => {
+				if (prop in i18nModel.model) i18nOptions[prop] = instance.dataValues[prop];
+			});
+
+			i18nOptions.language_id = options.language_id || baseOptions.defaultLanguage;
+			i18nOptions.parent_id = instance.dataValues.id;
+		}
+
+		return this
+			.sequelize
+			.models[i18nModel.name]
+			.update(i18nOptions, {where: {
+				parent_id: i18nOptions.parent_id,
+				language_id: i18nOptions.language_id,
+			}})
+			.then(() =>	instance.reload());
+	}
+
+	beforeDefine() {
+		this.sequelize.beforeDefine('beforeDefine_i18n', (model, options) => {
+			const mutableModel = model;
+			const mutableOptions = options;
+			const baseOptions = {
+				indexes: [],
+				paranoid: mutableOptions.paranoid,
+				timestamps: mutableOptions.timestamps,
+				underscored: mutableOptions.i18n? (mutableOptions.i18n.underscored && true): true,
+			};
+			const pk = this.getModelUniqueKey(mutableModel);		
+
+			let schema = null;
+
+			Object.keys(mutableModel).forEach((prop) => {
+				if ('i18n' in mutableModel[prop] && (mutableModel[prop].i18n === true)) {
+					if (!pk) {
+						throw new Error(`No primary or unique key found for ${mutableOptions.modelName} model`);
+					}
+
+					schema = schema || {
+						language_id: {
+							type: this.languageType,
+							unique: 'i18n_unicity_constraint',
+						},
+						parent_id: {
+							type: pk.type,
+							unique: 'i18n_unicity_constraint',
+						},
+					};
+
+					//if paranoid mode, the deleted element stays in the DB so we need to add the field deletedAt to the unique key (field created by using paranoid)
+					if(mutableOptions.paranoid == true)
+						schema.deleteAt = {
+							type: this.sequelize.Sequelize.DATE,
+							unique: 'i18n_unicity_constraint',
+						};
+
+					if ('unique' in mutableModel[prop] && (mutableModel[prop].unique === true)) {
+						baseOptions.indexes.push({
+							unique: true,
+							fields: mutableOptions.paranoid == true ? ['language_id', 'deletedAt', prop]: ['language_id', prop],
+						});
+					}
+
+					schema[prop] = {
+						type: mutableModel[prop].type,
+					};
+					
+					mutableModel[prop].type = this.sequelize.Sequelize.VIRTUAL;	
+					
+					//add a VIRTUAL field for language_id to be added to the FIND queries
+					if(!mutableModel.language_id || mutableModel.language_id.type != this.sequelize.Sequelize.VIRTUAL){
+						mutableModel.language_id = {
+							type: this.sequelize.Sequelize.VIRTUAL
+						};
+					}
+				}
+			});
+
+			if (schema) {
+				const name = this.getI18NName(mutableOptions.modelName);
+				const createdModel = this.createI18NModel(
+					name,
+					schema,
+					baseOptions,
+					mutableOptions.modelName,
+				);
+
+				this.i18nModels[mutableOptions.modelName] = createdModel;
+
+				if (this.baseOptions.i18nDefaultScope) {
+					mutableOptions.defaultScope = mutableOptions.defaultScope || {};
+					this.setDefaultScope(mutableOptions.defaultScope, name);
+				}
+
+				if (this.baseOptions.addI18NScope) {
+					mutableOptions.scopes = mutableOptions.scopes || {};
+					this.addI18NScope(mutableOptions.scopes, name);
+				}
+
+				if (this.baseOptions.injectI18NScope) {
+					mutableOptions.scopes = mutableOptions.scopes || {};
+					this.injectI18NScope(mutableOptions.scopes, name);
+				}
+
+				mutableOptions.instanceMethods = mutableOptions.instanceMethods || {};
+				this.setInstanceMethods(mutableOptions.instanceMethods, name);
+						
+			}
+		});
+	}
+
+	addLanguage(options) {    
+		const mutableOptions = options;
+
+		//add the language value to the virtual field if provided so it can be used by each instances returned
+		if(this.rawAttributes.language_id && 
+			this.rawAttributes.language_id.type == 'VIRTUAL' && 
+			(mutableOptions.language_id || (mutableOptions.where && mutableOptions.where.language_id))) {
+			
+			if(!mutableOptions.attributes)
+				mutableOptions.attributes = [...Object.keys(this.tableAttributes)];
+
+			const locale = mutableOptions.language_id || mutableOptions.where.language_id;
+
+			mutableOptions.attributes.push([this.sequelize.literal('\'' + locale + '\''), 'language_id']);
+		}
+	}
+
+	beforeFind(options) {    
+		const mutableOptions = options;
+		const i18nModel = this.i18nModel;
+
+		if (mutableOptions && mutableOptions.where && i18nModel) {
+			Object.keys(mutableOptions.where).forEach((prop) => {
+				if (prop in i18nModel.model) {
+					mutableOptions.include = mutableOptions.include || [];
+
+					mutableOptions.include.forEach((incl) => {
+					const mutableIncl = incl;
+
+					if (mutableIncl.model.name === i18nModel.name) {
+						mutableIncl.where = mutableIncl.where || {};
+						mutableIncl.where[prop] = mutableOptions.where[prop];
+					}
+					});
+
+					delete mutableOptions.where[prop];
+				}
+
+				if (Array.isArray(mutableOptions.where[prop])) {
+					mutableOptions.include = mutableOptions.include || [];
+
+					mutableOptions.include.forEach((incl) => {
+					const mutableIncl = incl;
+
+					if (mutableIncl.model.name === i18nModel.name) {
+						mutableIncl.where = mutableIncl.where || {};
+						mutableIncl.where[prop] = mutableOptions.where[prop];
+					}
+					});
+
+					delete mutableOptions.where[prop];
+				}
+			});
+		}
+
+		if (mutableOptions && mutableOptions.order && i18nModel) {
+			mutableOptions.order.forEach((prop, index) => {
+				if (prop[0] in i18nModel.model) {
+					mutableOptions.order[index] = [{
+						model: this.sequelize.models[i18nModel.name],
+						as: i18nModel.name,
+					}, prop[0], prop[1]];
+				}
+			});
+		} 
+	}
+
+	getI18N(modelName) {
+		return (lang) => {
+			let exit = false;
+
+			if (this.baseOptions.defaultLanguage === null) exit = true;
+
+			// TODO: model name is not defined as this in the instance which can break the whole library.
+			if (!(this[modelName] && this[modelName].length) || exit) return this;
+
+			for (let index = 0; index < this[modelName].length; index += 1) {
+				const value = this[modelName][index].toJSON();
+
+				if (value.language_id && value.language_id === lang) {
+					exit = true;
+
+					Object.keys(value).forEach((prop) => {
+						if (prop !== 'language_id' && prop !== 'parent_id' && prop !== 'id') {
+							this[prop] = value[prop];
+						}
+					});
+				}
+			}
+
+			return this;
+		};
+	}
+
+	setI18N(modelName) {
+		return (lang, propertyName, value, callback) => {
+			if (!lang && !this.baseOptions.defaultLanguage) throw new Error('No language given');
+			if (!propertyName) throw new Error('Property name to update is missing');
+
+			const currentObjectID = this.id;
+			const options = {
+				parent_id: currentObjectID,
+				language_id: lang,
+			};
+
+			options[propertyName] = value;
+
+			this.sequelize.models[modelName].upsert(options).then((result) => {
+				if (callback && (typeof callback === 'function')) callback(result);
+			});
+		};
+	}
 }
+
+module.exports = SequelizeI18N;
