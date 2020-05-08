@@ -2,8 +2,8 @@ import Sequelize from "sequelize";
 import chai from "chai";
 import fs from "fs";
 
-import SequelizeI18N from "..";
-import Models from "./Models";
+import SequelizeI18N from ".";
+import logger from "./logger";
 
 chai.should();
 chai.use(require("chai-like"));
@@ -20,6 +20,63 @@ let instance = null;
 let table1 = null;
 let table2 = null;
 
+const tb1 = (sequelizeClient, DataTypes) =>
+  sequelizeClient.define(
+    "table1",
+    {
+      id: {
+        type: DataTypes.BIGINT,
+        primaryKey: true,
+        autoIncrement: true,
+      },
+      label: {
+        type: DataTypes.STRING,
+        i18n: true,
+      },
+      description: {
+        type: DataTypes.STRING,
+        i18n: true,
+      },
+      reference: {
+        type: DataTypes.STRING,
+      },
+    },
+    {
+      freezeTableName: true,
+    }
+  );
+
+const tb2 = (sequelizeClient, DataTypes) =>
+  sequelizeClient.define(
+    "table2",
+    {
+      id: {
+        type: DataTypes.BIGINT,
+        primaryKey: true,
+        autoIncrement: true,
+      },
+      label: {
+        type: DataTypes.STRING,
+      },
+      reference: {
+        type: DataTypes.STRING,
+      },
+    },
+    {
+      freezeTableName: true,
+      i18n: {
+        underscored: false,
+      },
+    }
+  );
+
+const Models = (sequelizeClient) => {
+  const importedTable1 = sequelizeClient.import("table1", tb1);
+  const importedTable2 = sequelizeClient.import("table2", tb2);
+
+  return { table1: importedTable1, table2: importedTable2 };
+};
+
 describe("SequelizeI18N", () => {
   beforeEach(async () => {
     const dbFile = `${__dirname}/.test.sqlite`;
@@ -27,7 +84,7 @@ describe("SequelizeI18N", () => {
     try {
       fs.unlinkSync(dbFile);
     } catch (error) {
-      console.error(error);
+      logger.info("Creating database file...");
     }
 
     sequelize = new Sequelize("", "", "", {
@@ -71,44 +128,44 @@ describe("SequelizeI18N", () => {
     });
   });
 
-  it("`getI18NName()` should return the i18n table1 name", () => {
+  test("`getI18NName()` should return the i18n table1 name", () => {
     i18n.getI18NName("random").should.equal("random_i18n");
   });
 
-  it("`toArray()` of `null` should return an empty array", () => {
-    const result = i18n.toArray(null);
+  test("`toArray()` of `null` should return an empty array", () => {
+    const result = SequelizeI18N.toArray(null);
 
     Array.isArray(result).should.equal(true);
     result.length.should.equal(0);
   });
 
-  it("`toArray()` of an empty array should return an empty array", () => {
-    const result = i18n.toArray([]);
+  test("`toArray()` of an empty array should return an empty array", () => {
+    const result = SequelizeI18N.toArray([]);
 
     Array.isArray(result).should.equal(true);
     result.length.should.equal(0);
   });
 
-  it("`toArray()` of an object should return an array that contains the object at index 0", () => {
+  test("`toArray()` of an object should return an array that contains the object at index 0", () => {
     const obj = 5;
-    const result = i18n.toArray(obj);
+    const result = SequelizeI18N.toArray(obj);
 
     Array.isArray(result).should.equal(true);
     result.length.should.equal(1);
     result[0].should.equal(obj);
   });
 
-  it("`getLanguageArrayType()` of an array of strings should return `STRING`", () => {
+  test("`getLanguageArrayType()` of an array of strings should return `STRING`", () => {
     const result = i18n.getLanguageArrayType();
 
     result.should.equal("STRING");
   });
 
-  it("should have imported the example table1", () => {
+  test("should have imported the example table1", () => {
     sequelize.models.should.have.property("table1");
   });
 
-  it("i18n should have the correct language list", () => {
+  test("i18n should have the correct language list", () => {
     i18n.options.languages.length.should.equal(languages.list.length);
 
     for (let index = 0; index < languages.list.length; index += 1) {
@@ -116,15 +173,15 @@ describe("SequelizeI18N", () => {
     }
   });
 
-  it(`i18n should have \`${languages.default}\` as default language`, () => {
+  test(`i18n should have \`${languages.default}\` as default language`, () => {
     i18n.options.defaultLanguage.should.equal(languages.default);
   });
 
-  it("should have created the i18n table1 table", () => {
+  test("should have created the i18n table1 table", () => {
     sequelize.models.should.have.property("table1_i18n");
   });
 
-  it("should have a `table1`, `table1_i18ns` and `table2` tables", (done) => {
+  test("should have a `table1`, `table1_i18ns` and `table2` tables", (done) => {
     sequelize
       .showAllSchemas()
       .then((result) => {
@@ -144,7 +201,7 @@ describe("SequelizeI18N", () => {
       .catch((error) => done(error));
   });
 
-  it("should return i18n values", (done) => {
+  test("should return i18n values", (done) => {
     table1
       .findByPk(1)
       .then((result) => {
@@ -163,7 +220,7 @@ describe("SequelizeI18N", () => {
       .catch((e) => e);
   });
 
-  it("should return i18n values when the filter is on the i18n field", (done) => {
+  test("should return i18n values when the filter is on the i18n field", (done) => {
     table1
       .findOne({ where: { label: "test" } })
       .then((result) => {
@@ -177,7 +234,7 @@ describe("SequelizeI18N", () => {
       .catch((e) => e);
   });
 
-  it("should return English i18n values when the filter has include", (done) => {
+  test("should return English i18n values when the filter has include", (done) => {
     table1
       .findOne({
         include: [
@@ -198,7 +255,7 @@ describe("SequelizeI18N", () => {
       .catch((e) => e);
   });
 
-  it("should return English i18n values using the function", (done) => {
+  test("should return English i18n values using the function", (done) => {
     table1
       .findByPk(1)
       .then((result) => {
@@ -211,7 +268,7 @@ describe("SequelizeI18N", () => {
       .catch((e) => e);
   });
 
-  it("should return updated English i18n values", (done) => {
+  test("should return updated English i18n values", (done) => {
     table1
       .findByPk(1)
       .then((result) =>
@@ -229,7 +286,7 @@ describe("SequelizeI18N", () => {
       .catch((e) => e);
   });
 
-  it("should return the hard-coded language ID", (done) => {
+  test("should return the hard-coded language ID", (done) => {
     table1
       .findByPk(1, { language_id: "EN" })
       .then((r) => {
@@ -240,7 +297,7 @@ describe("SequelizeI18N", () => {
       .catch((e) => e);
   });
 
-  it("should delete current instance and its i18n values", () => {
+  test("should delete current instance and its i18n values", () => {
     instance.destroy();
   });
 });
@@ -251,14 +308,14 @@ describe("SequelizeI18N with a different suffix", () => {
 
     try {
       fs.unlinkSync(dbFile);
-    } catch (e) {
-      console.error(e);
+    } catch (error) {
+      logger.info("Creating database file...");
     }
 
     sequelize = new Sequelize("", "", "", {
       dialect: "sqlite",
       storage: dbFile,
-      logging: false, // console.log,
+      logging: false, // logger.log,
     });
 
     await sequelize.authenticate();
@@ -290,15 +347,15 @@ describe("SequelizeI18N with a different suffix", () => {
       );
   });
 
-  it("`getI18NName()` should return the i18n name for that table", () => {
+  test("`getI18NName()` should return the i18n name for that table", () => {
     i18n.getI18NName("random").should.equal("random-international");
   });
 
-  it("should have created the international table1 table", () => {
+  test("should have created the international table1 table", () => {
     sequelize.models.should.have.property("table1-international");
   });
 
-  it("should have a `table1` and `table1-international` tables", (done) => {
+  test("should have a `table1` and `table1-international` tables", (done) => {
     sequelize
       .showAllSchemas()
       .then((result) => {
@@ -316,7 +373,7 @@ describe("SequelizeI18N with a different suffix", () => {
       .catch((error) => done(error));
   });
 
-  it("should return i18n values", (done) => {
+  test("should return i18n values", (done) => {
     table1
       .findByPk(1)
       .then((result) => {
@@ -339,7 +396,7 @@ describe("SequelizeI18N with a different suffix", () => {
       .catch((e) => e);
   });
 
-  it("should return i18n values when the filter is on the i18n field", (done) => {
+  test("should return i18n values when the filter is on the i18n field", (done) => {
     table1
       .findOne({ where: { label: "test" } })
       .then((result) => {
@@ -352,7 +409,9 @@ describe("SequelizeI18N with a different suffix", () => {
       .catch((e) => e);
   });
 
-  it("should delete current instance and its i18n values", () => {
+  // TODO: add tests to check if model update works.
+
+  test("should delete current instance and its i18n values", () => {
     instance.destroy();
   });
 });
