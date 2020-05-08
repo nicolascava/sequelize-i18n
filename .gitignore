@@ -1,9 +1,9 @@
 .DS_Store
 *.log*
-manualRun.js
 *.sqlite*
 
 .idea
 .vscode
 node_modules
 coverage
+build
