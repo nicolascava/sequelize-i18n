@@ -10,23 +10,27 @@ As usual, define your models using [Sequelize](http://docs.sequelizejs.com). Sim
 
 ```javascript
 const product = (sequelize, DataTypes) =>
-  sequelize.define('product', {
-    id: {
-      type: DataTypes.BIGINT,
-      primaryKey: true,
-      autoIncrement: true,
+  sequelize.define(
+    "product",
+    {
+      id: {
+        type: DataTypes.BIGINT,
+        primaryKey: true,
+        autoIncrement: true,
+      },
+      name: {
+        type: DataTypes.STRING,
+        i18n: true,
+      },
+      reference: {
+        type: DataTypes.STRING,
+      },
     },
-    name: {
-      type: DataTypes.STRING,
-      i18n: true,
-    },
-    reference: {
-      type: DataTypes.STRING,
-    },
-  }, {});
+    {}
+  );
 
-export default function(sequelize) {
-  return sequelize.import('product', product);
+export default function (sequelize) {
+  return sequelize.import("product", product);
 }
 ```
 
@@ -35,14 +39,14 @@ export default function(sequelize) {
 Just set the Sequelize i18n module before importing models:
 
 ```javascript
-import Sequelize from 'sequelize';
-import SequelizeI18N from 'sequelize-i18n';
+import Sequelize from "sequelize";
+import SequelizeI18N from "sequelize-i18n";
 
 const languages = {
-  list: ['EN', 'FR', 'ES'],
-  default: 'FR',
+  list: ["EN", "FR", "ES"],
+  default: "FR",
 };
-const sequelize = new Sequelize('db_name', 'user', 'password');
+const sequelize = new Sequelize("db_name", "user", "password");
 const i18n = new SequelizeI18N(sequelize, {
   languages: languages.list,
   defaultLanguage: languages.default,
@@ -50,23 +54,23 @@ const i18n = new SequelizeI18N(sequelize, {
 
 i18n.init();
 
-const ProductModel = sequelize.import('product', product)
+const ProductModel = sequelize.import("product", product);
 ```
 
 ### Options
 
-* `languages`: list of allowed languages IDs.
-* `defaultLanguage`: default language ID.
-* `i18nDefaultScope`: add i18n to the default model scope.
-* `addI18NScope`: add i18n scope to model.
-* `injectI18NScope`: inject i18n to model scopes.
+- `languages`: list of allowed languages IDs.
+- `defaultLanguage`: default language ID.
+- `i18nDefaultScope`: add i18n to the default model scope.
+- `addI18NScope`: add i18n scope to model.
+- `injectI18NScope`: inject i18n to model scopes.
 
 ### Model Options
 
 This options can be set at the model level when defining them.
-Those are used in the `i18n` parameter. 
+Those are used in the `i18n` parameter.
 
-example: 
+example:
 
 ```javascript
 i18n: {
@@ -74,8 +78,7 @@ i18n: {
 			}
 ```
 
-* `underscored`: set the value of `underscored` option in sequelize when generating the table name.
-
+- `underscored`: set the value of `underscored` option in sequelize when generating the table name.
 
 ## How it works
 
@@ -95,10 +98,10 @@ Starting from the above example `Product`.
 
 A `product_i18n` model will be created, with the following columns:
 
-* `id`: the unique row identifier (`INTEGER`).
-* `language_id`: identifies the current translation language (`INTEGER` or `STRING`).
-* `parent_id`: the targeted product id (same as the model primary or unique key).
-* `name`: the i18n value (same as `Product.name.type`).
+- `id`: the unique row identifier (`INTEGER`).
+- `language_id`: identifies the current translation language (`INTEGER` or `STRING`).
+- `parent_id`: the targeted product id (same as the model primary or unique key).
+- `name`: the i18n value (same as `Product.name.type`).
 
 The `name` property type is set to `VIRTUAL`.
 The `language_id` property type is added as `VIRTUAL` into `Product`.
@@ -111,106 +114,92 @@ If the where clause includes `language_id`, the same behavior will happen so it 
 
 Sequelize i18n will add the functions below to the model:
 
-* `getI18N(language)`: Get the translation row for a given language
-* `AddI18N(values, language)`: Add a new translation using a different language ID. Values represents the fields to add in the form of `{field: value, field2: value}`
-* `DeleteI18N(language)`: Remove the translation row for a given language. 
+- `getI18N(language)`: Get the translation row for a given language
+- `AddI18N(values, language)`: Add a new translation using a different language ID. Values represents the fields to add in the form of `{field: value, field2: value}`
+- `DeleteI18N(language)`: Remove the translation row for a given language.
 
 ### Creation
 
 ```javascript
-ProductModel
-  .create({
-    id: 1,
-    name: 'test',
-    reference: 'xxx',
-  })
-  .then((result) => {
-    // [{ name: 'test', lang: 'FR' }]
-    console.info(result.product_i18n);
-  });
+ProductModel.create({
+  id: 1,
+  name: "test",
+  reference: "xxx",
+}).then((result) => {
+  // [{ name: 'test', lang: 'FR' }]
+  console.info(result.product_i18n);
+});
 ```
 
 OR
 
 ```javascript
-ProductModel
-  .create({
-    id: 1,
-    name: 'test',
-    reference: 'xxx',
-  })
-  .then((result) => {
-    // [{ name: 'test', lang: 'FR' }]
-    console.info(result.getI18N('FR'));
-  });
+ProductModel.create({
+  id: 1,
+  name: "test",
+  reference: "xxx",
+}).then((result) => {
+  // [{ name: 'test', lang: 'FR' }]
+  console.info(result.getI18N("FR"));
+});
 ```
 
 ### Add new Translation
 
 ```javascript
+productInstance.AddI18N({ name: "test EN" }, "EN").then((result) => {
+  // ...
+});
+```
+
+### Update
+
+```javascript
+productInstance.update({ name: "New Name" }).then((result) => {
+  // ...
+});
+
 productInstance
-  .AddI18N({name: 'test EN' }, 'EN')
+  .update({ name: "New Name" }, { language_id: "EN" })
   .then((result) => {
     // ...
   });
 ```
 
-### Update 
+### Delete
 
 ```javascript
-productInstance
-  .update({ name: 'New Name' })
-  .then((result) => {
-    // ...
-  });
-
-productInstance
-  .update({ name: 'New Name' }, { language_id: 'EN' })
-  .then((result) => {
-    // ...
-  });
-```
-
-### Delete 
-
-```javascript
-productInstance
-  .deleteI18N('EN')
-  .then((result) => {
-    // ...
-  });
+productInstance.deleteI18N("EN").then((result) => {
+  // ...
+});
 ```
 
 ### Find requests
 
 ```javascript
-ProductModel
-  .finAll({
-	  where: whereClauseObject,
-	  language_id: 'EN',
-  })
-  .then((result) => {
-    // 'EN'
-    console.info(result.language_id);
-  });
+ProductModel.finAll({
+  where: whereClauseObject,
+  language_id: "EN",
+}).then((result) => {
+  // 'EN'
+  console.info(result.language_id);
+});
 ```
 
 OR
 
 ```javascript
-ProductModel
-  .finAll({
-	  where: {
-			id: 'XXXX',
-			language_id: 'EN',
-	  },	  
-  })
-  .then((result) => {
-    // 'EN'
-    console.info(result.language_id);
-  });
+ProductModel.finAll({
+  where: {
+    id: "XXXX",
+    language_id: "EN",
+  },
+}).then((result) => {
+  // 'EN'
+  console.info(result.language_id);
+});
 ```
-    
+
 ## License
 
 The MIT License (MIT)
