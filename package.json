@@ -1,6 +1,6 @@
 {
-  "name": "sequelize-i18n",
-  "version": "2.1.1",
+  "name": "@nicolascava/sequelize-i18n",
+  "version": "2.1.2",
   "description": "🌎 Straightforward internalization using Sequelize",
   "author": "Nicolas Cava <me@nicolascava.com>",
   "license": "MIT",
