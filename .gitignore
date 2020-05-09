@@ -1,6 +1,9 @@
-/node_modules
-/.idea
 .DS_Store
 *.log*
-manualRun.js
-*.sqlite
+*.sqlite*
+
+.idea
+.vscode
+node_modules
+coverage
+build

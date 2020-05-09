@@ -1,74 +1,46 @@
 {
   "name": "sequelize-i18n",
   "version": "2.1.0",
-  "private": true,
   "description": "Easy internalization using Sequelize",
+  "license": "MIT",
+  "main": "./build/index.js",
   "scripts": {
-    "lint": "eslint ./ --config ./package.json --ignore-path ./.eslintignore",
-    "test": "mocha ./test/*.js  --require ./lib/requireBabelRegister.js"
+    "postinstall": "yarn build",
+    "build": "rm -rf build && babel src --out-dir build --ignore \"src/**/*.test.js\"",
+    "format": "concurrently \"yarn prettier:format\" \"yarn eslint:format\"",
+    "prettier:format": "prettier --write \"**/*.md\"",
+    "eslint:format": "yarn lint --fix",
+    "lint": "eslint -c ./.eslintrc.js --ignore-path ./.eslintignore *.js \"**/*.js\"",
+    "test:unit": "jest",
+    "test:unit:coverage": "yarn test:unit --coverage"
   },
   "dependencies": {
-    "babel-register": "^6.26.0",
-    "braces": "^3.0.2",
-    "chai-like": "^1.1.1",
-    "chai-things": "^0.2.0",
-    "lodash": "^4.12.0",
-    "mysql": "^2.10.2",
-    "sequelize": "^5.8.5"
+    "core-js": "3",
+    "lodash": "4.17.15",
+    "mysql": "2.18.1",
+    "sequelize": "5.21.7",
+    "winston": "3.2.1"
   },
   "devDependencies": {
-    "babel-cli": "^6.26.0",
-    "babel-eslint": "^10.0.1",
-    "babel-plugin-transform-runtime": "^6.23.0",
-    "babel-preset-es2015": "^6.24.1",
-    "babel-preset-stage-0": "^6.24.1",
-    "chai": "^4.2.0",
-    "eslint": "^5.16.0",
-    "eslint-config-airbnb": "^17.1.0",
-    "eslint-plugin-babel": "^5.0.0",
-    "eslint-plugin-import": "^2.11.0",
-    "eslint-plugin-jsx-a11y": "^6.0.3",
-    "eslint-plugin-react": "^7.7.0",
-    "mocha": "^6.1.4",
-    "sqlite3": "^4.0.8"
-  },
-  "eslintConfig": {
-    "extends": "airbnb",
-    "parser": "babel-eslint",
-    "rules": {
-      "max-len": [
-        2,
-        100,
-        4,
-        {
-          "ignorePattern": "\\s*<"
-        }
-      ]
-    },
-    "globals": {
-      "document": true,
-      "window": true,
-      "navigator": true,
-      "URL": true,
-      "fetch": true,
-      "it": true,
-      "describe": true,
-      "beforeEach": true
-    }
-  },
-  "babel": {
-    "presets": [
-      "es2015",
-      "stage-0"
-    ],
-    "plugins": [
-      [
-        "transform-runtime",
-        {
-          "polyfill": true,
-          "regenerator": true
-        }
-      ]
-    ]
+    "@babel/cli": "7.8.4",
+    "@babel/core": "7.9.6",
+    "@babel/preset-env": "7.9.6",
+    "@types/jest": "25.2.1",
+    "babel-eslint": "10.1.0",
+    "babel-jest": "26.0.1",
+    "concurrently": "5.2.0",
+    "eslint": "6.8.0",
+    "eslint-config-airbnb": "18.1.0",
+    "eslint-config-prettier": "6.11.0",
+    "eslint-plugin-babel": "5.3.0",
+    "eslint-plugin-chai-friendly": "0.6.0",
+    "eslint-plugin-import": "2.20.2",
+    "eslint-plugin-jsx-a11y": "6.2.3",
+    "eslint-plugin-prettier": "3.1.3",
+    "eslint-plugin-react": "7.19.0",
+    "eslint-plugin-react-hooks": "2.5.1",
+    "jest": "26.0.1",
+    "prettier": "2.0.5",
+    "sqlite3": "4.2.0"
   }
 }
