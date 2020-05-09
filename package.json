@@ -1,23 +1,29 @@
 {
   "name": "sequelize-i18n",
   "version": "2.1.0",
-  "description": "Easy internalization using Sequelize",
+  "description": "🌎 Straightforward internalization using Sequelize",
+  "author": "Nicolas Cava <me@nicolascava.com>",
   "license": "MIT",
   "main": "./build/index.js",
+  "engines": {
+    "node": ">=10.13.0"
+  },
   "scripts": {
-    "postinstall": "yarn build",
-    "build": "rm -rf build && babel src --out-dir build --ignore \"src/**/*.test.js\"",
+    "build": "babel src --out-dir build --ignore \"src/**/*.test.js\"",
     "format": "concurrently \"yarn prettier:format\" \"yarn eslint:format\"",
     "prettier:format": "prettier --write \"**/*.md\"",
     "eslint:format": "yarn lint --fix",
     "lint": "eslint -c ./.eslintrc.js --ignore-path ./.eslintignore *.js \"**/*.js\"",
     "test:unit": "jest",
-    "test:unit:coverage": "yarn test:unit --coverage"
+    "test:unit:coverage": "yarn test:unit --coverage",
+    "postinstall": "yarn build || npm run build",
+    "prebuild": "rimraf build"
   },
   "dependencies": {
     "core-js": "3",
     "lodash": "4.17.15",
     "mysql": "2.18.1",
+    "rimraf": "3.0.2",
     "sequelize": "5.21.7",
     "winston": "3.2.1"
   },
