@@ -16,7 +16,6 @@
     "lint": "eslint -c ./.eslintrc.js --ignore-path ./.eslintignore *.js \"**/*.js\"",
     "test:unit": "jest",
     "test:unit:coverage": "yarn test:unit --coverage",
-    "postinstall": "yarn build || npm run build",
     "prebuild": "rimraf build"
   },
   "dependencies": {
