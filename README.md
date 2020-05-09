@@ -6,6 +6,18 @@ Supports Node.js >= 10.13.0.
 
 ## Usage
 
+### Install
+
+```bash
+yarn add @nicolascava/sequelize-i18n
+```
+
+Or:
+
+```bash
+npm install @nicolascava/sequelize-i18n
+```
+
 ### Model definition
 
 As usual, define your models using [Sequelize](http://docs.sequelizejs.com). Simply set the i18n property to `true` to enable internationalized fields:
