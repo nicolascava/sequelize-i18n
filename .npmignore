@@ -1,7 +1,13 @@
+.idea
+.vscode
+node_modules
+coverage
 src
 .github
 .dependabot
 
+.DS_Store
+*.log*
 .babelrc.js
 .eslintignore
 .eslintrc.js
