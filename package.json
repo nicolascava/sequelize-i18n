@@ -3,7 +3,9 @@
   "version": "2.1.0",
   "description": "Easy internalization using Sequelize",
   "license": "MIT",
+  "main": "./build/index.js",
   "scripts": {
+    "postinstall": "yarn build",
     "build": "rm -rf build && babel src --out-dir build --ignore \"src/**/*.test.js\"",
     "format": "concurrently \"yarn prettier:format\" \"yarn eslint:format\"",
     "prettier:format": "prettier --write \"**/*.md\"",
