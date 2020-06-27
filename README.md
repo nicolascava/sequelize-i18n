@@ -89,15 +89,12 @@ Those are used in the `i18n` parameter.
 Example:
 
 ```javascript
-sequelize.define(
-  "product",
-  {
-    ...rest,
-    i18n: {
-      underscored: false,
-    },
+sequelize.define("product", {
+  ...rest,
+  i18n: {
+    underscored: false,
   },
-);
+});
 ```
 
 - `underscored`: set the value of `underscored` option in Sequelize when generating the table name.
@@ -110,16 +107,13 @@ If we enable i18n, it will create a new table where to store property's internat
 Starting from the above example `Product`.
 
 ```javascript
-sequelize.define(
-  "product",
-  {
-    ...rest,
-    name: {
-      type: DataTypes.STRING,
-      i18n: true,
-    },
+sequelize.define("product", {
+  ...rest,
+  name: {
+    type: DataTypes.STRING,
+    i18n: true,
   },
-);
+});
 ```
 
 It creates a `product_i18n` model with the following columns:
@@ -156,8 +150,7 @@ productModel
   .then((result) => {
     // [{ name: 'test', lang: 'FR' }]
     const data = result.product_i18n;
-  }
-);
+  });
 ```
 
 Or:
@@ -172,8 +165,7 @@ productModel
   .then((result) => {
     // [{ name: 'test', lang: 'FR' }]
     const data = result.getI18N("FR");
-  }
-);
+  });
 ```
 
 ### Add new translation
@@ -185,9 +177,7 @@ productModel.addI18N({ name: "test EN" }, "EN").then((result) => {});
 ### Update
 
 ```javascript
-productModel
-  .update({ name: "New name" })
-  .then((result) => {});
+productModel.update({ name: "New name" }).then((result) => {});
 
 productModel
   .update({ name: "New name" }, { language_id: "EN" })
@@ -211,8 +201,7 @@ productModel
   .then((result) => {
     // 'EN'
     const data = result.language_id;
-  }
-);
+  });
 ```
 
 Or:
@@ -228,8 +217,7 @@ productModel
   .then((result) => {
     // 'EN'
     const data = result.language_id;
-  }
-);
+  });
 ```
 
 ## License
