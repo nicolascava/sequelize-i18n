@@ -46,6 +46,6 @@
     "eslint-plugin-react-hooks": "4.0.4",
     "jest": "26.1.0",
     "prettier": "2.0.5",
-    "sqlite3": "4.2.0"
+    "sqlite3": "5.0.0"
   }
 }
