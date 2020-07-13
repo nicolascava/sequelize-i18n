@@ -23,7 +23,7 @@
     "lodash": "4.17.15",
     "mysql": "2.18.1",
     "rimraf": "3.0.2",
-    "sequelize": "5.21.7",
+    "sequelize": "6.3.3",
     "winston": "3.3.3"
   },
   "devDependencies": {
