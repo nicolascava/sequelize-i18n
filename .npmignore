@@ -4,7 +4,6 @@ node_modules
 coverage
 src
 .github
-.dependabot
 
 .DS_Store
 *.log*
