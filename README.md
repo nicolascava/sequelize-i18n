@@ -2,6 +2,8 @@
 
 > 🌎 Straightforward internalization using Sequelize
 
+> ❌ Sorry, but this library is no longer maintained. Please find an alternative that would be up to date with the latest developments of Sequelize.
+
 Supports Node.js >= 10.13.0.
 
 ## Usage
