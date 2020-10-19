@@ -430,10 +430,12 @@ class SequelizeI18N {
             },
           };
 
+          const deletedAtName = mutableOptions.deletedAt;
+
           // If paranoid mode, the deleted element stays in the DB so we need to
           // add the field `deletedAt` to the unique key (field created by using paranoid).
           if (mutableOptions.paranoid)
-            schema.deleteAt = {
+            schema[deletedAtName] = {
               type: this.sequelize.Sequelize.DATE,
               unique: "i18n_unicity_constraint",
             };
@@ -445,7 +447,7 @@ class SequelizeI18N {
             baseOptions.indexes.push({
               unique: true,
               fields: mutableOptions.paranoid
-                ? ["language_id", "deletedAt", prop]
+                ? ["language_id", deletedAtName, prop]
                 : ["language_id", prop],
             });
           }
