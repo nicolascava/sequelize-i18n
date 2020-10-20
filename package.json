@@ -1,7 +1,7 @@
 {
   "name": "@nicolascava/sequelize-i18n",
-  "version": "2.1.4",
-  "description": "🌎 Straightforward internalization using Sequelize",
+  "version": "2.1.6",
+  "description": "[UNMAINTAINED] 🌎 Straightforward internalization using Sequelize",
   "author": "Nicolas Cava <me@nicolascava.com>",
   "license": "MIT",
   "main": "./build/index.js",
